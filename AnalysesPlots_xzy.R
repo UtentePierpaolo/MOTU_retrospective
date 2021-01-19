@@ -15,14 +15,15 @@ gc()
 
 require(lme4)
 library("Hmisc")
+library("plotrix")
 require(car)
 require(multcomp)
 # require(pbkrtest), require(lmerTest) ?????
 
-load("D:/MOTU/retrospective study data/Data/Fall.RData")
-load("D:/MOTU/retrospective study data/Data/HospitalStay_v1.5.Rdata")
-load("D:/MOTU/retrospective study data/Data/Patient_v4.RData")
-load("D:/MOTU/retrospective study data/Data/PropensityScore_v2.RData")
+load("C:/Users/Alice/OneDrive - Alma Mater Studiorum Università di Bologna/Personal_Health_Systems_Lab/MOTU/MOTU_Code_12.11/Fall.RData")
+load("C:/Users/Alice/OneDrive - Alma Mater Studiorum Università di Bologna/Personal_Health_Systems_Lab/MOTU/MOTU_Code_12.11/HospitalStay_v1.5.Rdata")
+load("C:/Users/Alice/OneDrive - Alma Mater Studiorum Università di Bologna/Personal_Health_Systems_Lab/MOTU/MOTU_Code_12.11/Patient_v4.RData")
+# load("D:/MOTU/retrospective study data/Data/PropensityScore_v2.RData")
 
 
 # pre-processing-------------------------
@@ -73,7 +74,7 @@ vx <- c("FirstDelivery","logTimeFromAmputation","nComorbidities","nDrugs","DrugA
 # 1st approach: split the dataset according to a covariate, run different models, and test significance of KneeCategory in each model
 # 2nd approach: run one model for each covariate, defining groups according to x*z
 
-nmin <- 4
+nmin <- 5
 
 excludeRareKneeCategory <- function(ds){
   # if on some knee category there are less than nmin(=5) falls, exclude that category
@@ -219,11 +220,16 @@ cformula <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|Patie
 m1 <- glmer(cformula, data=dfmx1, family = poisson(link = "log"), nAGQ = 20)
 m2 <- glmer(cformula, data=dfmx2, family = poisson(link = "log"), nAGQ = 20)
 
-png("C:/Users/Pierpaolo/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/retrospective study/Figures/fall_KneeCategory_FirstDel.png",
-    width =7,height =6, units = 'in', res = 300)
+png("C:/Users/Alice/OneDrive - Alma Mater Studiorum Università di Bologna/Personal_Health_Systems_Lab/MOTU/Figures/fall_KneeCategory_ALL.png",
+    width =21,height =12, units = 'in', res = 300)
+
+# layout(matrix(1:6, 2, 3, by.row = T))
+
+op <- par(mfrow = c(2,3), cex = 1)
+
 data.estimates <- fdrr(m1)
 x <- data.estimates$var
-plot(x, data.estimates$irr, ylim=c(0,15), xlim=c(0, 3+0.2), xaxt='n', 
+plot(x, data.estimates$irr, ylim=c(0,20), xlim=c(0, 3+0.2), xaxt='n', 
      xlab="Knee category", ylab="Number of falls per 1000 days", 
      cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5)
 axis(side = 1, at = 0:3, labels=0:3, cex.lab=1.1, cex.axis=1.1)
@@ -233,9 +239,11 @@ data.estimates <- fdrr(m2)
 x <- data.estimates$var
 errbar(x+0.15, data.estimates$irr, data.estimates$irr_u, data.estimates$irr_l,
        add=T,lwd=2, errbar.col="dark orange", col="dark orange")
-legend(x=0,y=15, legend=c("First delivery", "Renewal"),
+
+legend(x=0,y=20, legend=c("First delivery", "Renewal"),
        col=c("dark green","dark orange"), lty=1, pch=16, lwd=2)
-dev.off()
+
+# dev.off()
 
 
 # DrugAntidepressants
@@ -247,12 +255,15 @@ cformula <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|Patie
 m1 <- glmer(cformula, data=dfmx1, family = poisson(link = "log"), nAGQ = 20)
 m2 <- glmer(cformula, data=dfmx2, family = poisson(link = "log"), nAGQ = 20)
 
-png("C:/Users/Pierpaolo/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/retrospective study/Figures/fall_KneeCategory_Antidepre.png",
-    width =7,height =6, units = 'in', res = 300)
+# png("C:/Users/Alice/OneDrive - Alma Mater Studiorum Università di Bologna/Personal_Health_Systems_Lab/MOTU/Figures/fall_KneeCategory_Antidepre_v3.png",
+#     width =7,height =6, units = 'in', res = 300)
 data.estimates <- fdrr(m1)
 x1 <- data.estimates$var
-plot(x1, data.estimates$irr, ylim=c(0,15), xlim=c(0, 3+0.2), xaxt='n', 
-     xlab="Knee category", ylab="Number of falls per 1000 days", 
+# from <- 15
+# to <- 20
+# gap.plot(x1,data.estimates$irr, gap = c(from,to), type = "b", xlab="Knee category", ylab="Number of falls per 1000 days")
+plot(x1, data.estimates$irr, ylim=c(0,20), xlim=c(0, 3+0.2), xaxt='n',
+     xlab="Knee category", ylab="Number of falls per 1000 days",
      cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5)
 axis(side = 1, at = 0:3, labels=0:3, cex.lab=1.1, cex.axis=1.1)
 errbar(x1, data.estimates$irr, data.estimates$irr_u, data.estimates$irr_l,
@@ -261,9 +272,16 @@ data.estimates <- fdrr(m2)
 x2 <- data.estimates$var
 errbar(x2+0.15, data.estimates$irr, data.estimates$irr_u, data.estimates$irr_l,
        add=T,lwd=2, errbar.col="dark orange", col="dark orange")
-legend(x=0,y=15, legend=c("Use of antidepressants", "No use of antidepressants"),
+# 
+# axis.break(2, from, breakcol="snow", style="gap")
+# axis.break(2, from*(1+0.02), breakcol="black", style="slash")
+# axis.break(4, from*(1+0.02), breakcol="black", style="slash")
+# axis(2, at=from)
+
+legend(x=1.5,y=20, legend=c("Use of antidepressants", "No use of antidepressants"),
        col=c("dark green","dark orange"), lty=1, pch=16, lwd=2)
-dev.off()
+
+# dev.off()
 
 
 # DrugAntiepileptics
@@ -277,11 +295,11 @@ cformula <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|Patie
 m1 <- glm(nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory, data=dfmx1, family = poisson(link = "log"))
 m2 <- glmer(cformula, data=dfmx2, family = poisson(link = "log"), nAGQ = 20)
 
-png("C:/Users/Pierpaolo/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/retrospective study/Figures/fall_KneeCategory_Antiepileptics.png",
-    width =7,height =6, units = 'in', res = 300)
+# png("C:/Users/Alice/OneDrive - Alma Mater Studiorum Università di Bologna/Personal_Health_Systems_Lab/MOTU/Figures/fall_KneeCategory_Antiepileptics.png",
+#     width =7,height =6, units = 'in', res = 300)
 data.estimates <- fdrr(gmem=m1)
 x1 <- data.estimates$var
-plot(x1, data.estimates$irr, ylim=c(0,15), xlim=c(0, 3+0.2), xaxt='n', 
+plot(x1, data.estimates$irr, ylim=c(0,20), xlim=c(0, 3+0.2), xaxt='n', 
      xlab="Knee category", ylab="Number of falls per 1000 days", 
      cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5)
 axis(side = 1, at =0:3, labels=0:3, cex.lab=1.1, cex.axis=1.1)
@@ -291,9 +309,9 @@ data.estimates <- fdrr(m2)
 x2 <- data.estimates$var
 errbar(x2+0.15, data.estimates$irr, data.estimates$irr_u, data.estimates$irr_l,
        add=T,lwd=2, errbar.col="dark orange", col="dark orange")
-legend(x=0,y=15, legend=c("Use of antiepileptics", "No use of antiepileptics"),
+legend(x=0,y=20, legend=c("Use of antiepileptics", "No use of antiepileptics"),
        col=c("dark green","dark orange"), lty=1, pch=16, lwd=2)
-dev.off()
+# dev.off()
 
 
 # TimeFromAmputation
@@ -312,11 +330,11 @@ m3 <- glmer(cformula, data=dfmx3, family = poisson(link = "log"), nAGQ = 20)
 # m2 <- glm(cformulas, data=dfmx2, family = poisson(link = "log"))
 # m3 <- glm(cformulas, data=dfmx3, family = poisson(link = "log"))
 
-png("C:/Users/Pierpaolo/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/retrospective study/Figures/fall_KneeCategory_TimeFromAmputation.png",
-    width =7,height =6, units = 'in', res = 300)
+# png("C:/Users/Alice/OneDrive - Alma Mater Studiorum Università di Bologna/Personal_Health_Systems_Lab/MOTU/Figures/fall_KneeCategory_TimeFromAmputation.png",
+#     width =7,height =6, units = 'in', res = 300)
 data.estimates <- fdrr(gmem=m1)
 x1 <- data.estimates$var
-plot(x1, data.estimates$irr, ylim=c(0,15), xlim=c(0, 3+0.2), xaxt='n', 
+plot(x1, data.estimates$irr, ylim=c(0,20), xlim=c(0, 3+0.2), xaxt='n', 
      xlab="Knee category", ylab="Number of falls per 1000 days", 
      cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5)
 axis(side = 1, at =0:3, labels=0:3, cex.lab=1.5, cex.axis=1.5)
@@ -330,11 +348,11 @@ data.estimates <- fdrr(m3)
 x3 <- data.estimates$var
 errbar(x3+0.2, data.estimates$irr, data.estimates$irr_u, data.estimates$irr_l,
        add=T,lwd=2, errbar.col="dark blue", col="dark blue")
-legend(x=0,y=15, legend=c(paste("Time from amputation: 1st tertile:",levels(dfm$dTimeFromAmputation)[1],"days"), 
+legend(x=0,y=20, legend=c(paste("Time from amputation: 1st tertile:",levels(dfm$dTimeFromAmputation)[1],"days"), 
                           paste("Time from amputation: 2nd tertile:",levels(dfm$dTimeFromAmputation)[2],"days"),
                           paste("Time from amputation: 3rd tertile:",levels(dfm$dTimeFromAmputation)[3],"days")),
        col=c("dark green","dark orange","dark blue"), lty=1, pch=16, lwd=2)
-dev.off()
+# dev.off()
 
 
 # nDrugs
@@ -358,11 +376,11 @@ m3 <- glmer(cformula, data=dfmx3, family = poisson(link = "log"), nAGQ = 20)
 # m2 <- glm(cformulas, data=dfmx2, family = poisson(link = "log"))
 # m3 <- glm(cformulas, data=dfmx3, family = poisson(link = "log"))
 
-png("C:/Users/Pierpaolo/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/retrospective study/Figures/fall_KneeCategory_nDrugs.png",
-    width =7,height =6, units = 'in', res = 300)
+# png("C:/Users/Alice/OneDrive - Alma Mater Studiorum Università di Bologna/Personal_Health_Systems_Lab/MOTU/Figures/fall_KneeCategory_nDrugs.png",
+#     width =7,height =6, units = 'in', res = 300)
 data.estimates <- fdrr(gmem=m1)
 x1 <- data.estimates$var
-plot(x1, data.estimates$irr, ylim=c(0,15), xlim=c(0, 3+0.2), xaxt='n', 
+plot(x1, data.estimates$irr, ylim=c(0,20), xlim=c(0, 3+0.2), xaxt='n', 
      xlab="Knee category", ylab="Number of falls per 1000 days", 
      cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5)
 axis(side = 1, at =0:3, labels=0:3, cex.lab=1.5, cex.axis=1.5)
@@ -376,11 +394,11 @@ data.estimates <- fdrr(m3)
 x3 <- data.estimates$var
 errbar(x3+0.2, data.estimates$irr, data.estimates$irr_u, data.estimates$irr_l,
        add=T,lwd=2, errbar.col="dark blue", col="dark blue")
-legend(x=0,y=15, legend=c(paste("Number of drugs: 1st tertile:",levels(dfm$dnDrugs)[1]), 
+legend(x=0,y=20, legend=c(paste("Number of drugs: 1st tertile:",levels(dfm$dnDrugs)[1]), 
                           paste("Number of drugs: 2nd tertile:",levels(dfm$dnDrugs)[2]),
                           paste("Number of drugs: 3rd tertile:",levels(dfm$dnDrugs)[3])),
        col=c("dark green","dark orange","dark blue"), lty=1, pch=16, lwd=2)
-dev.off()
+# dev.off()
 
 
 # nComorbidities
@@ -404,11 +422,11 @@ m2 <- glmer(cformula, data=dfmx2, family = poisson(link = "log"), nAGQ = 20) #
 # m2 <- glm(cformulas, data=dfmx2, family = poisson(link = "log"))
 m3 <- glm(cformulas, data=dfmx3, family = poisson(link = "log"))
 
-png("C:/Users/Pierpaolo/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/retrospective study/Figures/fall_KneeCategory_nComorbidities.png",
-    width =7,height =6, units = 'in', res = 300)
+# png("C:/Users/Alice/OneDrive - Alma Mater Studiorum Università di Bologna/Personal_Health_Systems_Lab/MOTU/Figures/fall_KneeCategory_nComorbidities.png",
+#     width =7,height =6, units = 'in', res = 300)
 data.estimates <- fdrr(gmem=m1)
 x1 <- data.estimates$var
-plot(x1, data.estimates$irr, ylim=c(0,15), xlim=c(0, 3+0.2), xaxt='n',
+plot(x1, data.estimates$irr, ylim=c(0,20), xlim=c(0, 3+0.2), xaxt='n',
      xlab="Knee category", ylab="Number of falls per 1000 days",
      cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5)
 axis(side = 1, at =0:3, labels=0:3, cex.lab=1.5, cex.axis=1.5)
@@ -422,7 +440,7 @@ data.estimates <- fdrr(m3)
 x3 <- data.estimates$var
 errbar(x3+0.2, data.estimates$irr, data.estimates$irr_u, data.estimates$irr_l,
        add=T,lwd=2, errbar.col="dark blue", col="dark blue")
-legend(x=0,y=15, legend=c(paste("Number of comorbidities: 1st tertile:",levels(dfm$dnComorbidities)[1]),
+legend(x=0,y=20, legend=c(paste("Number of comorbidities: 1st tertile:",levels(dfm$dnComorbidities)[1]),
                           paste("Number of comorbidities: 2nd tertile:",levels(dfm$dnComorbidities)[2]),
                           paste("Number of comorbidities: 3rd tertile:",levels(dfm$dnComorbidities)[3])),
        col=c("dark green","dark orange","dark blue"), lty=1, pch=16, lwd=2)
@@ -433,7 +451,7 @@ dev.off()
 dfm$dpropscore <- cut2(dfm$propscore, g=3)
 table(dfm$dpropscore)
 table(dfm[,c("nfallwp","dpropscore","KneeCategory")])
-cformula <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|PatientID)"
+cformula <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|Anonymous)"
 cformulas <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory"
 dfmx1 <- dfm[dfm$dpropscore %in% levels(dfm$dpropscore)[1], c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
 table(dfmx1$nfallwp, dfmx1$KneeCategory, useNA="a")
@@ -450,7 +468,7 @@ m2 <- glmer(cformula, data=dfmx2, family = poisson(link = "log"), nAGQ = 20) #
 # m2 <- glm(cformulas, data=dfmx2, family = poisson(link = "log"))
 m3 <- glm(cformulas, data=dfmx3, family = poisson(link = "log"))
 
-png("C:/Users/Pierpaolo/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/retrospective study/Figures/fall_KneeCategory_propscore.png",
+png("C:/Users/Alice/OneDrive - Alma Mater Studiorum Università di Bologna/Personal_Health_Systems_Lab/MOTU/Figures/fall_KneeCategory_propscore.png",
     width =7,height =6, units = 'in', res = 300)
 data.estimates <- fdrr(gmem=m1)
 x1 <- data.estimates$var

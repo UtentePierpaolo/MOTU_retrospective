@@ -64,6 +64,13 @@ constructPropensityScore_gbm <- function(dfr, varps){
   dfr <- merge(dfr, dfprop[,c("AnonymousID","AdmissionDate","w")],
                by=c("AnonymousID","AdmissionDate"), all.x=T)
   
+  # IR with negative binomial models
+  
+  
+  
+  
+  
+  
   
   
   return(list(psdata=dfr,psmodel=psobj))
@@ -74,14 +81,3 @@ constructPropensityScore_gbm <- function(dfr, varps){
 
 
 
-# # diagnostics
-# plot(psobj0)
-# 
-# summary(gbm0$gbm.obj,
-#         n.trees=gbm0$desc$es.mean.ATE$n.trees,
-#         plot=T)
-# 
-# bal.table(psobj0)
-# 
-# plot(psobj0, plots=2)
-# plot(psobj0, plots=3)

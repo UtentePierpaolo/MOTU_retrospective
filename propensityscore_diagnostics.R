@@ -7,7 +7,22 @@
 # D. F. Mccaffrey et al., "A tutorial on propensity score estimation for multiple treatments using generalized boosted models," Stat. Med., vol. 32, no. 19, pp. 3388-3414, Aug. 2013, doi: 10.1002/sim.5753.
 
 # load packages-----------------------
-require(lme4)
+# require(lme4)
+require(twang)
+
+# # diagnostics
+# plot(psobj0)
+# 
+# summary(gbm0$gbm.obj,
+#         n.trees=gbm0$desc$es.mean.ATE$n.trees,
+#         plot=T)
+# 
+# bal.table(psobj0)
+# 
+# plot(psobj0, plots=2)
+# plot(psobj0, plots=3)
+
+
 
 # boxplots for overlap assessment----------------------
 

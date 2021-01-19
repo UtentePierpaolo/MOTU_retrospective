@@ -103,6 +103,7 @@ f_univariate_associations_yRR <- function(y, xs, dfm){
     stop("variables not defined in the dataframe")
   }
 
+  require(lme4)
   require(car)
   
   
