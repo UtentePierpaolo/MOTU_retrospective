@@ -51,15 +51,15 @@ constructPropensityScore_gbm <- function(dfr, varps){
   cformula <- as.formula(paste0("KneeCategory ~ ",paste0(varps, collapse=" + ")))
   psobj <- mnps(formula=cformula, 
                  data=dfprop,
-                 n.trees=5000,
+                 n.trees=10000,
                  interaction.depth=2,
                  shrinkage=0.01,
                  perm.test.iters=0,
-                 stop.method=c("es.max","ks.max"),
+                 stop.method="es.mean", # c("es.max","ks.max")
                  estimand = "ATE",
-                 verbose=FALSE)
+                 verbose=T)
   
-  dfprop$w <- get.weights(psobj, stop.method="es.max")
+  dfprop$w <- get.weights(psobj, stop.method="es.mean")
   
   dfr <- merge(dfr, dfprop[,c("AnonymousID","AdmissionDate","w")],
                by=c("AnonymousID","AdmissionDate"), all.x=T)

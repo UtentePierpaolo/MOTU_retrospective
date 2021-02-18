@@ -11,6 +11,7 @@ models_ExposureOutcome <- function(dfm){
   require(lme4)
   require(survey)
   source("fdrrs.R")
+  require(car)
   
   nmin = 5 # minimum number of falls to calculate falls rate in a group
   

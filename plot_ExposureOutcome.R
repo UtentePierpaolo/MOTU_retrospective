@@ -5,7 +5,7 @@
 # and pairwise comparisons
 
 
-plot_ExposureOutcome <- function(modelszy){
+plot_ExposureOutcome <- function(modelszy, saveaddress=NULL){
   
   require(multcomp)
   require(Hmisc)
@@ -29,15 +29,17 @@ plot_ExposureOutcome <- function(modelszy){
   
   x <- 0:3 # 
   
-  png("C:/Users/Pierpaolo/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/retrospective study/Figures/fall_KneeCategory.png",
-    width =7,height =10, units = 'in', res = 300)
+  if (!is.null(saveaddress)){
+    png(paste0(saveaddress,"fall_KneeCategory.png"),
+        width =7,height =10, units = 'in', res = 300)
+  }
   
   layout(matrix(1:2, 2, 1))  
   
   plot(x, data.estimates$irr, ylim=c(0,5), xlim=c(0, 3.2), xaxt='n', 
        xlab="Knee category", ylab="Number of falls per 1000 days", 
-       cex.lab=1.1, cex.axis=1.1, cex.main=1.1, cex.sub=1.5, main="Falls with prosthesis")
-  axis(side = 1, at = x, labels=vkc, cex.lab=1.1, cex.axis=1.1)
+       cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, main="Falls with prosthesis")
+  axis(side = 1, at = x, labels=vkc, cex.lab=1.5, cex.axis=1.5)
   errbar(x, data.estimates$irr, data.estimates$irr_u, data.estimates$irr_l,
          add=T,lwd=2, errbar.col="dark blue", col="dark blue")
   
@@ -54,10 +56,14 @@ plot_ExposureOutcome <- function(modelszy){
   
   wht <- glht(lmodel1[["NumberFallsWithProsthesis"]], linfct = mcp(KneeCategory = c("AMK - LK = 0", "FK - LK = 0", "MPK - LK = 0", "FK - AMK = 0", "MPK - AMK = 0", "MPK - FK = 0") ))
   
-  fcg(confint(wht), cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5)
+  fcg(confint(wht), 
+      cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, 
+      main="95% confidence interval")
 
-  dev.off()
-   
+  if (!is.null(saveaddress)){
+    dev.off()
+  }
+  
    
  
    # PS-weighted model----------------------
@@ -72,16 +78,17 @@ plot_ExposureOutcome <- function(modelszy){
    
    x <- 0:3 # 
    
-  
-   # png("C:/Users/Pierpaolo/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/retrospective study/Figures/fall_KneeCategory_PSweighted.png",
-   #     width =7,height =10, units = 'in', res = 300)
+   if (!is.null(saveaddress)){
+     png(paste0(saveaddress,"fall_KneeCategory_PSweighted.png"),
+         width =7,height =10, units = 'in', res = 300) 
+   }
    
   layout(matrix(1:2, 2, 1))  
    
    plot(x, data.estimates$irr, ylim=c(0,5), xlim=c(0, 3.2), xaxt='n', 
         xlab="Knee category", ylab="Number of falls per 1000 days", 
-        cex.lab=1.1, cex.axis=1.1, cex.main=1.1, cex.sub=1.5, main="Falls with prosthesis - PS weighted")
-   axis(side = 1, at = x, labels=data.estimates$KneeCategory, cex.lab=1.1, cex.axis=1.1)
+        cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, main="Falls with prosthesis - PS weighted")
+   axis(side = 1, at = x, labels=data.estimates$KneeCategory, cex.lab=1.5, cex.axis=1.5)
    errbar(x, data.estimates$irr, data.estimates$irr_u, data.estimates$irr_l,
           add=T,lwd=2, errbar.col="dark blue", col="dark blue")
    
@@ -95,8 +102,11 @@ plot_ExposureOutcome <- function(modelszy){
    
    
    fcg(lcontrasts, 
-       cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, main="95% confidence level")
+       cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, 
+       main="95% confidence interval")
    
+   if (!is.null(saveaddress)){
+     dev.off()
+   }
    
-   # dev.off()
-}
+  }
