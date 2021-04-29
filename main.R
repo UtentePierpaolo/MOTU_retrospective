@@ -14,27 +14,32 @@ gc()
 # load data from local
 # also present at 
 
-setwd("C:/Users/Pierpaolo/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/retrospective study/Code/MOTU_retrospective/") 
+setwd("C:/Users/p-pie/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/retrospective study/Code/MOTU_retrospective/") 
 source("preprocessing.R")
-# source("association_xz.R")
 source("table_xz.R")
 source("constructPropensityScore_gbm.R")
 source("f_univariate_associations.R")
-source("models_ExposureOutcome.R")
+# source("models_ExposureOutcome.R")
+source("ExposureOutcome_modelFitting.R")
+source("ExposureOutcome_inference.R")
+source("ExposureOutcome_prediction.R")
 source("table_ExposureOutcome.R") 
 source("plot_ExposureOutcome.R")
+source("IRxzy.R")
+source("plot_xzy.R")
 
 
 # load data
 # old version: https://figshare.com/s/c84ae0d82a3e053ab668
-dfr <- read.csv("AnonymisedData_04112020.csv")
+dfr <- read.csv("AnonymisedData_21032021.csv",
+                stringsAsFactors=T)
 
 
 # pre-processing------------------------------
 
 varx <- c("Age","Sex",
           "Weight", "Height",
-          "ThirdPayer","FirstdeliveryRenewal","RehabGoal",
+          "FirstdeliveryRenewal","LengthOfStay","RehabGoal","ThirdPayer",
           "TimeFromAmputation_days","TimeFromAmputation_logdays","TimeFromAmputation_months",
           "AmputationSide","AmputationCause",
           "nComorbidities",
@@ -46,34 +51,31 @@ varx <- c("Age","Sex",
 # "StumpLength", "PainAverage", "LCIInitialScore", "AMPAdmissionScore","KlevelAdmission", "TWTInitialTime_m"
 # variables excluded because having >= 50% missing rate
 
-# "TimeFromAmputation_months", "TimeFromAmputation_days"...
-# improve it
-
 lpre <- preprocessing(dfr, varx)
 dfr <- lpre[["dfr"]]
 dfvarx <- lpre[["dfvarx"]]
-
+# Time from amputation: keep only TimeFromAmputation_months
+cdfvarx <- dfvarx[-which(dfvarx$varx %in% c("TimeFromAmputation_days","TimeFromAmputation_logdays")),]
 
 # knee categories
 vkc <- c("LK","AMK","FK","MPK")
-# 
-# # color code for knee categories
-# vcol= c("dark orange","dark green","light blue","brown")
-# names(vcol) <- vkc
-
 
 # descriptive statistics-----------------------
 
-# Table 1. Descriptive statistics on the hospital stays.
-# ...
+# Table 1. Descriptive statistics on the hospitalizations:
+# all hospitalizations
+# hospitalizations per knee category
 
+tdfr <- dfr
+tdfr$all <- factor("all")
+tab_x <- table_xz(dfr=tdfr, dfvarx=cdfvarx, varz="all")
+tab_x_print <- print_Tabxz(tab_x)
 
 # Distribution of patients' characteristics per knee category
-# Time from amputation: keep only TimeFromAmputation_months
-cdfvarx <- dfvarx[-which(dfvarx$varx %in% c("TimeFromAmputation_days","TimeFromAmputation_logdays")),]
 ltab_xProsth <- table_xz(dfr=dfr, dfvarx=cdfvarx, varz="KneeCategory")
-(ltab_xProsth_print <- print_Tabxz(ltab_xProsth))
+ltab_xProsth_print <- print_Tabxz(ltab_xProsth)
 
+# write.table(tab_x_print$all, "clipboard", sep="\t", row.names=FALSE)
 # write.table(ltab_xProsth_print[["LK"]], "clipboard", sep="\t", row.names=FALSE)
 # write.table(ltab_xProsth_print[["AMK"]], "clipboard", sep="\t", row.names=FALSE)
 # write.table(ltab_xProsth_print[["FK"]], "clipboard", sep="\t", row.names=FALSE)
@@ -96,11 +98,11 @@ length(unique(dfr[whf,"AnonymousID"]))
 # Associations between patients' characteristics with any fall and falls with prosthesis
 
 # Time from amputation: keep only TimeFromAmputation_logdays
-cvarx <- setdiff(varx, c("TimeFromAmputation_days","TimeFromAmputation_months"))
+cvarx <- setdiff(varx, c("TimeFromAmputation_days","TimeFromAmputation_months","LengthOfStay"))
 
-# "NumberAnyFall" (af)
-dfRR_af <- f_univariate_associations_yRR(y="NumberAnyFall", xs=cvarx, dfm=dfr)
-dfRR_af[which(dfRR_af$p<0.05),]
+# # "NumberAnyFall" (af)
+# dfRR_af <- f_univariate_associations_yRR(y="NumberAnyFall", xs=cvarx, dfm=dfr)
+# dfRR_af[which(dfRR_af$p<0.05),]
 
 # "NumberFallsWithProsthesis" (wp)
 dfRR_wp <- f_univariate_associations_yRR(y="NumberFallsWithProsthesis", xs=cvarx, dfm=dfr)
@@ -130,8 +132,13 @@ dfr <- lPS$psdata
 
 # balance
 plot(lPS$psmodel)
-# table covariates among treatment groups
 
+# Distribution of patients' characteristics per knee category
+# after propensity score weighting
+ltab_xProsth_w <- table_xz(dfr=dfr, w="w", dfvarx=cdfvarx, varz="KneeCategory")
+ltab_xProsth_w_print <- print_Tabxz(ltab_xProsth_w)
+
+# table_PSbalance <- tab_PSbalance(t_pop=tab_x$all, t_unw=ltab_xProsth, t_w=ltab_xProsth_w)
 
 # # overlap
 # boxplot(PropScore2 ~ KneeCategory, data=dfrp,
@@ -143,20 +150,26 @@ plot(lPS$psmodel)
 # association zy-----------------------------
 
 # fit models for y vs z
-llmodelszy <- models_ExposureOutcome(dfm=dfr)
+# llmodelszy <- models_ExposureOutcome(dfm=dfr)
+
+lmodels <- ExposureOutcome_modelFitting(dfm=dfr)
+
+(linference <- ExposureOutcome_inference(lmodels))
+
+lIR <- ExposureOutcome_prediction(lmodels)
 
 # Table 2. Rehabilitation stays, patients and time at risk, and falls according to knee category
-TableKneeFalls <- table_ExposureOutcome(dfm=dfr, modelszy=llmodelszy)
-TableKneeFalls <- TableKneeFalls[,c("KneeCategory","NumberHospitalStays","NumberPatients",
-                    "NumberHospitalDays","NumberFallsWithProsthesis",
-                    "IR_NumberFallsWithProsthesis","IR_NumberFallsWithProsthesis_CI",
-                    "IR_NumberFallsWithProsthesis_PS","IR_NumberFallsWithProsthesis_PS_CI")]
-TableKneeFalls <- t(TableKneeFalls)
+TableKneeFalls <- table_ExposureOutcome(dfm=dfr, lIR=lIR)
 
-# Figure 2. Falls incidence rates (IR) per knee category and incidence rate ratios (IRR) per knee category pairs
-plot_ExposureOutcome(modelszy=llmodelszy, 
+# Figure 1. Falls incidence rates (IR) per knee category and incidence rate ratios (IRR) per knee category pairs
+plot_ExposureOutcome(linference=linference, lIR=lIR, 
                      saveaddress="C:/Users/Pierpaolo/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/Publications/Manuscript_retrosp_1/Rev PTJ_2/Figures/")
-# "C:/Users/Pierpaolo/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/retrospective study/Figures/"
 
 
-save.image(file = "results.RData")
+
+# Figure 2. FallsWithProsthesis vs (KneeCategory x varps)
+llIRxzy <- IRxzy(dfm=dfr)
+plot_xzy(llIRxzy, saveaddress="C:/Users/p-pie/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/Publications/Manuscript_retrosp_1/Rev PTJ_2/Figures/")
+
+
+# save.image(file = "results.RData")

@@ -1,9 +1,13 @@
 # models_ExposureOutcome
 
 
-# models for the association between 
-# KneeCategory (exposure, z)
-# and FallsWithProsthesis (outcome, y)
+# models for the association between KneeCategory (exposure, z) and FallsWithProsthesis (outcome, y)
+
+# 1. model fitting
+# 2. inference: on KneeCategory + pairwise post-hoc comparisons
+# 3. prediction
+
+# for unweighted and PS-weighted models
 
 
 models_ExposureOutcome <- function(dfm){
@@ -18,7 +22,8 @@ models_ExposureOutcome <- function(dfm){
   
   # models for unadjusted fall rates----------------------
   
-  voutcome <- c("NumberAnyFall","NumberFallsWithProsthesis","NumberFallsWithoutProsthesis")
+  # voutcome <- c("NumberAnyFall","NumberFallsWithProsthesis","NumberFallsWithoutProsthesis")
+  voutcome <- "NumberFallsWithProsthesis"
   vformula_all <- paste(voutcome, " ~ offset(log(LengthOfStay)) + (1|AnonymousID)")
   vformula0 <- paste(voutcome, " ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|AnonymousID)")
   vformula1 <- paste(voutcome, " ~ offset(log(LengthOfStay)) + KneeCategory + (1|AnonymousID)")
@@ -39,12 +44,20 @@ models_ExposureOutcome <- function(dfm){
     
     lmodel0[[ind]] <- glmer(vformula0[ind], data=cdfm, family = poisson(link = "log"), nAGQ = 20)
     lmodel1[[ind]] <- glmer(vformula1[ind], data=cdfm, family = poisson(link = "log"), nAGQ = 20)
+    
+    # inference on KneeCategory, PS-weighted model
     lanova[[ind]] <- Anova(lmodel1[[ind]])
   }
   names(lmodel_all) <- voutcome
   names(lmodel0) <- voutcome
   names(lmodel1) <- voutcome
   names(lanova) <- voutcome
+  
+  
+  # paiwise comparisons
+  wht <- glht(modelszy$lmodel1$NumberFallsWithProsthesis, 
+              linfct = mcp(KneeCategory = c("AMK - LK = 0", "FK - LK = 0", "MPK - LK = 0", "FK - AMK = 0", "AMK - MPK  = 0", "FK - MPK = 0") ))
+  
   
   
   # models for fall rates, weighted with propensity score (PS)----------------------
@@ -67,6 +80,11 @@ models_ExposureOutcome <- function(dfm){
   dsd <- svydesign(id= ~ 1, weights= ~ w, data=cdfm)
   ates <- svyglm(NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + AMK+FK+MPK,
                  design=dsd, family=quasipoisson())
+  ates_null <- svyglm(NumberFallsWithProsthesis ~ offset(log(LengthOfStay)),
+                 design=dsd, family=quasipoisson())
+  
+  # inference on KneeCategory, PS-weighted model
+  anova_ates <- anova(ates, ates_null, method="Wald")
 
   # FK - AMK
   ate_FK_AMK <- data.frame(svycontrast(ates, quote(FK - AMK)))
@@ -74,25 +92,25 @@ models_ExposureOutcome <- function(dfm){
   ate_FK_AMK$"t value" <- ate_FK_AMK$Estimate/ate_FK_AMK$"Std. Error"
   ate_FK_AMK$"Pr(>|t|)" <- 2*(1-pt(abs(ate_FK_AMK$"t value"),
                                    df=summary(ates)$df.residual))
-  # MPK - AMK
-  ate_MPK_AMK <- data.frame(svycontrast(ates, quote(MPK - AMK)))
-  names(ate_MPK_AMK) <- c("Estimate", "Std. Error")
-  ate_MPK_AMK$"t value" <- ate_MPK_AMK$Estimate/ate_MPK_AMK$"Std. Error"
-  ate_MPK_AMK$"Pr(>|t|)" <- 2*(1-pt(abs(ate_MPK_AMK$"t value"),
+  # AMK - MPK
+  ate_AMK_MPK <- data.frame(svycontrast(ates, quote(AMK - MPK)))
+  names(ate_AMK_MPK) <- c("Estimate", "Std. Error")
+  ate_AMK_MPK$"t value" <- ate_AMK_MPK$Estimate/ate_AMK_MPK$"Std. Error"
+  ate_AMK_MPK$"Pr(>|t|)" <- 2*(1-pt(abs(ate_AMK_MPK$"t value"),
                                    df=summary(ates)$df.residual))
   
-  # MPK - FK
-  ate_MPK_FK <- data.frame(svycontrast(ates, quote(MPK - FK)))
-  names(ate_MPK_FK) <- c("Estimate", "Std. Error")
-  ate_MPK_FK$"t value" <- ate_MPK_FK$Estimate/ate_MPK_FK$"Std. Error"
-  ate_MPK_FK$"Pr(>|t|)" <- 2*(1-pt(abs(ate_MPK_FK$"t value"),
+  # FK - MPK
+  ate_FK_MPK <- data.frame(svycontrast(ates, quote(FK - MPK)))
+  names(ate_FK_MPK) <- c("Estimate", "Std. Error")
+  ate_FK_MPK$"t value" <- ate_FK_MPK$Estimate/ate_FK_MPK$"Std. Error"
+  ate_FK_MPK$"Pr(>|t|)" <- 2*(1-pt(abs(ate_FK_MPK$"t value"),
                                     df=summary(ates)$df.residual))
   
   # all contrasts
-  ates_allc <- rbind(summary(ates)$coef[-1,], ate_FK_AMK, ate_MPK_AMK, ate_MPK_FK)
+  ates_allc <- rbind(summary(ates)$coef[-1,], ate_FK_AMK, ate_AMK_MPK, ate_FK_MPK)
   rownames(ates_allc) <- c("AMK vs. LK",
                           "FK vs. LK", "MPK vs. LK", "FK vs. AMK",
-                          "MPK vs. AMK", "MPK vs FK")
+                          "AMK vs. MPK", "FK vs MPK")
 
   # ## Estimate the means. ##
   # ## The intercept estimates the mean for LK ##
@@ -123,18 +141,29 @@ models_ExposureOutcome <- function(dfm){
   # !! compare using glht and script with svycontrast... !!
   
   
-  
-  # Incidence for IRR for each knee category and their 95% CI----------------------------
-  lRR <- list()
-  lRR[["NumberAnyFall"]] <- fdrr(gmem=lmodel0[["NumberAnyFall"]])
-  lRR[["NumberFallsWithProsthesis"]] <- fdrr(gmem=lmodel0[["NumberFallsWithProsthesis"]])
-  lRR[["NumberFallsWithoutProsthesis"]] <- fdrr(gmem=lmodel0[["NumberFallsWithoutProsthesis"]])
+  # Prediction
   lRR[["NumberFallsWithProsthesis_PS"]] <- fdrr_svy(gmem=ates0)
   
   
-  return(list(lmodel_all=lmodel_all, lmodel0=lmodel0, lmodel1=lmodel1, 
-              ates0=ates0, ates=ates, ates_allc=ates_allc,
-              lanova=lanova, lRR=lRR))
+  # Incidence for IRR for each knee category and their 95% CI----------------------------
+  lRR <- list()
+  # lRR[["NumberAnyFall"]] <- fdrr(gmem=lmodel0[["NumberAnyFall"]])
+  # lRR[["NumberFallsWithProsthesis"]] <- fdrr(gmem=lmodel0[["NumberFallsWithProsthesis"]])
+  # lRR[["NumberFallsWithoutProsthesis"]] <- fdrr(gmem=lmodel0[["NumberFallsWithoutProsthesis"]])
+  newdata_kc <- data.frame(LengthOfStay=rep(1000,4), KneeCategory=factor(c("LK","AMK","FK","MPK")))
+  lRR[["NumberFallsWithProsthesis"]] <- fdrr_mp(gmem=lmodel0[["NumberFallsWithProsthesis"]],
+                                                newdata = newdata_kc, CIlevel = 0.95)
+  
+  
+  lIR_all <- list()
+  newdata_all <- data.frame(LengthOfStay=1000, KneeCategory="All")
+  lIR_all[["NumberFallsWithProsthesis"]] <- fdrr_mp(gmem=lmodel_all[["NumberFallsWithProsthesis"]],
+                                                    newdata = newdata_all, CIlevel=.95)
+  
+  return(list(lmodel_all=lmodel_all, lmodel0=lmodel0, lmodel1=lmodel1, # unweighted models
+              ates0=ates0, ates=ates, ates_allc=ates_allc, # PS-weighted model
+              lanova=lanova, anova_ates=anova_ates, 
+              lRR=lRR))
 }
 
 

@@ -4,7 +4,7 @@
 
 # x: "FirstdeliveryRenewal","logTimeFromAmputation","nComorbidities","nDrugs","DrugAntidepressants","DrugAntiepileptics","ThirdPayer"
 # z: KneeCategory
-# y: nfallwp
+# y: NumberFallsWithProsthesis
 
 # ThirdPayer just because it is suspect
 
@@ -29,12 +29,12 @@ load("C:/Users/Alice/OneDrive - Alma Mater Studiorum Università di Bologna/Perso
 # pre-processing-------------------------
 
 # creates dfm with some variables
-# among those: nfall, dfall, nfallwp, dfallwp
+# among those: nfall, dfall, NumberFallsWithProsthesis, dfallwp
 # n=number, d=dichotomized, wp=with prosthesis
 
 # join
-dfm0 <- merge(HospitalStay, Patient, by="PatientID")
-dfm0 <- merge(dfm0, dfprop[,c("PatientID","AdmissionDate","propscore","propscore2")], by=c("PatientID","AdmissionDate"), all.x=T)
+dfm0 <- merge(HospitalStay, Patient, by="AnonymousID")
+dfm0 <- merge(dfm0, dfprop[,c("AnonymousID","AdmissionDate","propscore","propscore2")], by=c("AnonymousID","AdmissionDate"), all.x=T)
 
 # TimeFromAmputation
 dfm0$TimeFromAmputation <- as.numeric(dfm0$AdmissionDate - dfm0$AmputationDate)
@@ -48,20 +48,20 @@ dfm0[dfm0$FirstdeliveryRenewal %in% "Renewal","FirstDelivery"] <- F
 # falls
 # number of falls per hospital stay
 Fall$nfall <- 1
-aFall <- aggregate(nfall ~ PatientID+AdmissionDate, data=Fall, FUN="sum")
-dfm <- merge(dfm0, aFall, all.x = T, by=c("PatientID","AdmissionDate"))
+aFall <- aggregate(nfall ~ AnonymousID+AdmissionDate, data=Fall, FUN="sum")
+dfm <- merge(dfm0, aFall, all.x = T, by=c("AnonymousID","AdmissionDate"))
 dfm[is.na(dfm$nfall), "nfall"] <- 0
 
-# nfallwp contains the number of falls that for sure occurred while wearing the prosthesis
+# NumberFallsWithProsthesis contains the number of falls that for sure occurred while wearing the prosthesis
 Fallwp <- Fall[Fall$WearingProsthesis %in% 1,]
-aFallwp <- aggregate(nfall ~ PatientID+AdmissionDate, data=Fallwp, FUN="sum")
-names(aFallwp)[names(aFallwp)=="nfall"] <- "nfallwp"
-dfm <- merge(dfm, aFallwp, all.x = T, by=c("PatientID","AdmissionDate"))
-dfm[is.na(dfm$nfallwp), "nfallwp"] <- 0
+aFallwp <- aggregate(nfall ~ AnonymousID+AdmissionDate, data=Fallwp, FUN="sum")
+names(aFallwp)[names(aFallwp)=="nfall"] <- "NumberFallsWithProsthesis"
+dfm <- merge(dfm, aFallwp, all.x = T, by=c("AnonymousID","AdmissionDate"))
+dfm[is.na(dfm$NumberFallsWithProsthesis), "NumberFallsWithProsthesis"] <- 0
 
 # # dichotomize
 # dfm$dfall <- (dfm$nfall>0)*1
-# dfm$dfallwp <- (dfm$nfallwp>0)*1
+# dfm$dfallwp <- (dfm$NumberFallsWithProsthesis>0)*1
 
 # association analyses------------------------
 
@@ -79,9 +79,9 @@ nmin <- 5
 excludeRareKneeCategory <- function(ds){
   # if on some knee category there are less than nmin(=5) falls, exclude that category
   # nmin <- 4
-  adfm <- aggregate(nfallwp ~ KneeCategory, data=ds, FUN=sum)
+  adfm <- aggregate(NumberFallsWithProsthesis ~ KneeCategory, data=ds, FUN=sum)
   # knee category to exclude from the analyses
-  kcte <- adfm[adfm[,"nfallwp"] < nmin, "KneeCategory"]
+  kcte <- adfm[adfm[,"NumberFallsWithProsthesis"] < nmin, "KneeCategory"]
   cdfm <- droplevels(ds[!(ds$KneeCategory %in% kcte),])
   return(cdfm)
 }
@@ -89,16 +89,16 @@ excludeRareKneeCategory <- function(ds){
 
 # approach 1 ----------------------------
 
-cformula0 <- "nfallwp ~ offset(log(LengthOfStay)) + KneeCategory + (1 | PatientID)"
-cformula1 <- "nfallwp ~ offset(log(LengthOfStay)) + KneeCategory"
+cformula0 <- "NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory + (1 | AnonymousID)"
+cformula1 <- "NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory"
 
 # split the dataset (dsx0, dsx1) according to the dichotomic covariate
-# remove knee cathegories where nfallwp < nmin
-dsx0 <- dfm[which(!dfm$FirstDelivery), c("nfallwp","LengthOfStay","KneeCategory","PatientID")]
-table(dsx0[,c("KneeCategory","nfallwp")], useNA="a")
+# remove knee cathegories where NumberFallsWithProsthesis < nmin
+dsx0 <- dfm[which(dfm$FirstdeliveryRenewal %in% "Renewal"), c("NumberFallsWithProsthesis","LengthOfStay","KneeCategory","AnonymousID")]
+table(dsx0[,c("KneeCategory","NumberFallsWithProsthesis")], useNA="a")
 dsx0 <- excludeRareKneeCategory(dsx0)
-dsx1 <- dfm[which(dfm$FirstDelivery), c("nfallwp","LengthOfStay","KneeCategory")]
-table(dsx1[,c("KneeCategory","nfallwp")], useNA="a")
+dsx1 <- dfm[which(dfm$FirstdeliveryRenewal %in% "FirstDeliv"), c("NumberFallsWithProsthesis","LengthOfStay","KneeCategory")]
+table(dsx1[,c("KneeCategory","NumberFallsWithProsthesis")], useNA="a")
 dsx1 <- excludeRareKneeCategory(dsx1)
 
 # perform y~z in both dsx0, dsx1 
@@ -110,7 +110,7 @@ summary(mx1)
 Anova(mx1)
 
 # for (ind in 1:length(vdx)){
-#   cformula <- paste0("nfallwp ~ offset(log(LengthOfStay)) + ", vdx[ind], " + (1 | PatientID)")
+#   cformula <- paste0("NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + ", vdx[ind], " + (1 | AnonymousID)")
 #   # split the dataset (dsx0, dsx1) according to the dichotomic covariate
 #   dsx0 <- dfm[which(dfm$FirstDelivery), ]
 #   ............
@@ -120,53 +120,53 @@ Anova(mx1)
 # approach 2--------------------
 
 # # define x*z groups using dummy variables
-# cdfm <- na.omit(dfm[,c("nfallwp","KneeCategory","FirstDelivery","PatientID","LengthOfStay")]) 
-# cdfm$dfallwp <- (cdfm$nfallwp>0)*1
+# cdfm <- na.omit(dfm[,c("NumberFallsWithProsthesis","KneeCategory","FirstDelivery","AnonymousID","LengthOfStay")]) 
+# cdfm$dfallwp <- (cdfm$NumberFallsWithProsthesis>0)*1
 # cdfm$one <- 1
-# tte <- aggregate(cbind(one, dfallwp, nfallwp) ~ -1 + KneeCategory:FirstDelivery, data=cdfm, FUN=sum)
-# tte$toexclude <- tte$nfallwp<nmin
+# tte <- aggregate(cbind(one, dfallwp, NumberFallsWithProsthesis) ~ -1 + KneeCategory:FirstDelivery, data=cdfm, FUN=sum)
+# tte$toexclude <- tte$NumberFallsWithProsthesis<nmin
 # 
 # cdfm <- merge(cdfm, tte[,c("KneeCategory","FirstDelivery","toexclude")], 
 #               by=c("KneeCategory","FirstDelivery"), all.x=T)
 # cdfm <- cdfm[!cdfm$toexclude, ]
-# # modm <- model.matrix(nfallwp ~ -1 + KneeCategory:FirstDelivery, data=cdfm)
+# # modm <- model.matrix(NumberFallsWithProsthesis ~ -1 + KneeCategory:FirstDelivery, data=cdfm)
 # # cte <- colSums(modm)
 # # modm <- modm[,-which(cte==0)]
-# m01 <- glm(nfallwp ~ offset(log(LengthOfStay)) -1 + KneeCategory:FirstDelivery, data=cdfm, family = poisson(link = "log"))
+# m01 <- glm(NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) -1 + KneeCategory:FirstDelivery, data=cdfm, family = poisson(link = "log"))
 # summary(m01)
 # # Anova(m01)
 
-# # cformula <- nfallwp ~ offset(log(LengthOfStay)) + KneeCategory*FirstDelivery + (1|PatientID) # did not converge
-# cformula <- nfallwp ~ offset(log(LengthOfStay)) + KneeCategory+FirstDelivery + (1|PatientID)
+# # cformula <- NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory*FirstDelivery + (1|AnonymousID) # did not converge
+# cformula <- NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory+FirstDelivery + (1|AnonymousID)
 # mFirstDelivery01 <- glmer(cformula, data=dfm, family = poisson(link = "log"), nAGQ = 20)
-# # cformula <- nfallwp ~ offset(log(LengthOfStay)) + KneeCategory*FirstDelivery
+# # cformula <- NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory*FirstDelivery
 # # mFirstDelivery01 <- glm(cformula, data=dfm, family = poisson(link = "log"))
 # Anova(mFirstDelivery01)
 # 
-# cformula <- nfallwp ~ offset(log(LengthOfStay)) + KneeCategory+logTimeFromAmputation + (1|PatientID)
-# # cformula <- nfallwp ~ offset(log(LengthOfStay)) + KneeCategory*logTimeFromAmputation + (1|PatientID) # did not converge
+# cformula <- NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory+logTimeFromAmputation + (1|AnonymousID)
+# # cformula <- NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory*logTimeFromAmputation + (1|AnonymousID) # did not converge
 # mlogTimeFromAmputation01 <- glmer(cformula, data=dfm, family = poisson(link = "log"), nAGQ = 20)
 # Anova(mlogTimeFromAmputation01)
 # 
-# # cformula <- nfallwp ~ offset(log(LengthOfStay)) + KneeCategory*nComorbidities + (1|PatientID) # did not converge
-# cformula <- nfallwp ~ offset(log(LengthOfStay)) + KneeCategory+nComorbidities + (1|PatientID) 
+# # cformula <- NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory*nComorbidities + (1|AnonymousID) # did not converge
+# cformula <- NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory+nComorbidities + (1|AnonymousID) 
 # mnComorbidities01 <- glmer(cformula, data=dfm, family = poisson(link = "log"), nAGQ = 20)
 # Anova(mnComorbidities01)
 # 
-# # cformula <- nfallwp ~ offset(log(LengthOfStay)) + KneeCategory*nDrugs + (1|PatientID)
-# cformula <- nfallwp ~ offset(log(LengthOfStay)) + KneeCategory+nDrugs + (1|PatientID)
+# # cformula <- NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory*nDrugs + (1|AnonymousID)
+# cformula <- NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory+nDrugs + (1|AnonymousID)
 # mnDrugs01 <- glmer(cformula, data=dfm, family = poisson(link = "log"), nAGQ = 20)
 # Anova(mnDrugs01)
 # 
-# # cformula <- nfallwp ~ offset(log(LengthOfStay)) + KneeCategory*DrugAntidepressants + (1|PatientID)
-# cformula <- nfallwp ~ offset(log(LengthOfStay)) + KneeCategory+DrugAntidepressants + (1|PatientID)
+# # cformula <- NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory*DrugAntidepressants + (1|AnonymousID)
+# cformula <- NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory+DrugAntidepressants + (1|AnonymousID)
 # mDrugAntidepressants01 <- glmer(cformula, data=dfm, family = poisson(link = "log"), nAGQ = 20)
 # Anova(mDrugAntidepressants01)
 # 
 # # ..."DrugAntiepileptics", "ThirdPayer"
 
 
-vformula <- paste0("nfallwp ~ offset(log(LengthOfStay)) + KneeCategory+", vx," + (1|PatientID)")
+vformula <- paste0("NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory+", vx," + (1|AnonymousID)")
 lmod01 <- list()
 sdf <- data.frame(model=NA,var=NA,Chisq=NA,Df=NA)
 sdf$`Pr(>Chisq)` <- NA
@@ -207,16 +207,16 @@ fdrr <- function(gmem, namesx=NULL){
 
 # FirstdeliveryRenewal
 table(dfm$FirstdeliveryRenewal, useNA="a")
-dfmx1 <- dfm[dfm$FirstdeliveryRenewal %in% "FirstDeliv" & dfm$KneeCategory!=3,c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
+dfmx1 <- dfm[dfm$FirstdeliveryRenewal %in% "FirstDeliv" & dfm$KneeCategory!=3,c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
 dfmx1$KneeCategory <- droplevels(dfmx1$KneeCategory)
-dfmx2 <- dfm[dfm$FirstdeliveryRenewal %in% "Renewal",c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
+dfmx2 <- dfm[dfm$FirstdeliveryRenewal %in% "Renewal",c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
 
-# dfmx1 <- dfm[dfm$FirstdeliveryRenewal %in% "FirstDeliv",c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
+# dfmx1 <- dfm[dfm$FirstdeliveryRenewal %in% "FirstDeliv",c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
 # dfmx1 <- excludeRareKneeCategory(dfmx1)
-# dfmx2 <- dfm[dfm$FirstdeliveryRenewal %in% "Renewal",c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
+# dfmx2 <- dfm[dfm$FirstdeliveryRenewal %in% "Renewal",c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
 # dfmx2 <- excludeRareKneeCategory(dfmx2)
 
-cformula <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|PatientID)"
+cformula <- "NumberFallsWithProsthesis  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|AnonymousID)"
 m1 <- glmer(cformula, data=dfmx1, family = poisson(link = "log"), nAGQ = 20)
 m2 <- glmer(cformula, data=dfmx2, family = poisson(link = "log"), nAGQ = 20)
 
@@ -248,10 +248,10 @@ legend(x=0,y=20, legend=c("First delivery", "Renewal"),
 
 # DrugAntidepressants
 table(dfm$DrugAntidepressants, useNA="a")
-dfmx1 <- dfm[dfm$DrugAntidepressants, c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
+dfmx1 <- dfm[dfm$DrugAntidepressants, c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
 dfmx1 <- dfmx1[!(dfmx1$KneeCategory %in% 0),]
-dfmx2 <- dfm[!dfm$DrugAntidepressants, c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
-cformula <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|PatientID)"
+dfmx2 <- dfm[!dfm$DrugAntidepressants, c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
+cformula <- "NumberFallsWithProsthesis  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|AnonymousID)"
 m1 <- glmer(cformula, data=dfmx1, family = poisson(link = "log"), nAGQ = 20)
 m2 <- glmer(cformula, data=dfmx2, family = poisson(link = "log"), nAGQ = 20)
 
@@ -286,13 +286,13 @@ legend(x=1.5,y=20, legend=c("Use of antidepressants", "No use of antidepressants
 
 # DrugAntiepileptics
 table(dfm$DrugAntiepileptics, useNA="a")
-dfmx1 <- dfm[dfm$DrugAntiepileptics, c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
+dfmx1 <- dfm[dfm$DrugAntiepileptics, c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
 dfmx1 <- droplevels(dfmx1[!(dfmx1$KneeCategory %in% c(0,1)),])
-dfmx2 <- dfm[!dfm$DrugAntiepileptics, c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
-cformula <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|PatientID)"
+dfmx2 <- dfm[!dfm$DrugAntiepileptics, c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
+cformula <- "NumberFallsWithProsthesis  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|AnonymousID)"
 # fixed effect model
 # m1 <- glmer(cformula, data=dfmx1, family = poisson(link = "log"), nAGQ = 20)
-m1 <- glm(nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory, data=dfmx1, family = poisson(link = "log"))
+m1 <- glm(NumberFallsWithProsthesis  ~ -1 + offset(log(LengthOfStay)) + KneeCategory, data=dfmx1, family = poisson(link = "log"))
 m2 <- glmer(cformula, data=dfmx2, family = poisson(link = "log"), nAGQ = 20)
 
 # png("C:/Users/Alice/OneDrive - Alma Mater Studiorum Università di Bologna/Personal_Health_Systems_Lab/MOTU/Figures/fall_KneeCategory_Antiepileptics.png",
@@ -318,11 +318,11 @@ legend(x=0,y=20, legend=c("Use of antiepileptics", "No use of antiepileptics"),
 # dichotomize logTimeFromAmputation
 dfm$dTimeFromAmputation <- cut2(dfm$TimeFromAmputation, g=3) # cuts=mean(dfm$logTimeFromAmputation)
 table(dfm$dTimeFromAmputation)
-cformula <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|PatientID)"
-cformulas <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory"
-dfmx1 <- dfm[dfm$dTimeFromAmputation %in% levels(dfm$dTimeFromAmputation)[1], c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
-dfmx2 <- dfm[dfm$dTimeFromAmputation %in% levels(dfm$dTimeFromAmputation)[2], c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
-dfmx3 <- dfm[dfm$dTimeFromAmputation %in% levels(dfm$dTimeFromAmputation)[3], c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
+cformula <- "NumberFallsWithProsthesis  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|AnonymousID)"
+cformulas <- "NumberFallsWithProsthesis  ~ -1 + offset(log(LengthOfStay)) + KneeCategory"
+dfmx1 <- dfm[dfm$dTimeFromAmputation %in% levels(dfm$dTimeFromAmputation)[1], c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
+dfmx2 <- dfm[dfm$dTimeFromAmputation %in% levels(dfm$dTimeFromAmputation)[2], c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
+dfmx3 <- dfm[dfm$dTimeFromAmputation %in% levels(dfm$dTimeFromAmputation)[3], c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
 dfmx3 <- droplevels(dfmx3[!(dfmx3$KneeCategory %in% 1),])
 m1 <- glmer(cformula, data=dfmx1, family = poisson(link = "log"), nAGQ = 20)
 m2 <- glmer(cformula, data=dfmx2, family = poisson(link = "log"), nAGQ = 20)
@@ -358,16 +358,16 @@ legend(x=0,y=20, legend=c(paste("Time from amputation: 1st tertile:",levels(dfm$
 # nDrugs
 dfm$dnDrugs <- cut2(dfm$nDrugs, g=3)
 table(dfm$dnDrugs)
-table(dfm[,c("nfallwp","dnDrugs","KneeCategory")])
-cformula <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|PatientID)"
-cformulas <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory"
-dfmx1 <- dfm[dfm$dnDrugs %in% levels(dfm$dnDrugs)[1], c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
-table(dfmx1$nfallwp, dfmx1$KneeCategory, useNA="a")
-dfmx2 <- dfm[dfm$dnDrugs %in% levels(dfm$dnDrugs)[2], c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
+table(dfm[,c("NumberFallsWithProsthesis","dnDrugs","KneeCategory")])
+cformula <- "NumberFallsWithProsthesis  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|AnonymousID)"
+cformulas <- "NumberFallsWithProsthesis  ~ -1 + offset(log(LengthOfStay)) + KneeCategory"
+dfmx1 <- dfm[dfm$dnDrugs %in% levels(dfm$dnDrugs)[1], c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
+table(dfmx1$NumberFallsWithProsthesis, dfmx1$KneeCategory, useNA="a")
+dfmx2 <- dfm[dfm$dnDrugs %in% levels(dfm$dnDrugs)[2], c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
 dfmx2 <- droplevels(dfmx2[!(dfmx2$KneeCategory %in% 0),])
-table(dfmx2$nfallwp, dfmx2$KneeCategory, useNA="a")
-dfmx3 <- dfm[dfm$dnDrugs %in% levels(dfm$dnDrugs)[3], c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
-table(dfmx3$nfallwp, dfmx3$KneeCategory, useNA="a")
+table(dfmx2$NumberFallsWithProsthesis, dfmx2$KneeCategory, useNA="a")
+dfmx3 <- dfm[dfm$dnDrugs %in% levels(dfm$dnDrugs)[3], c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
+table(dfmx3$NumberFallsWithProsthesis, dfmx3$KneeCategory, useNA="a")
 
 # m1 <- glmer(cformula, data=dfmx1, family = poisson(link = "log"), nAGQ = 20)
 m1 <- glm(cformulas, data=dfmx1, family = poisson(link = "log"))
@@ -404,16 +404,16 @@ legend(x=0,y=20, legend=c(paste("Number of drugs: 1st tertile:",levels(dfm$dnDru
 # nComorbidities
 dfm$dnComorbidities <- cut2(dfm$nComorbidities, g=3)
 table(dfm$dnComorbidities)
-table(dfm[,c("nfallwp","dnComorbidities","KneeCategory")])
-cformula <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|PatientID)"
-cformulas <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory"
-dfmx1 <- dfm[dfm$dnComorbidities %in% levels(dfm$dnComorbidities)[1], c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
-table(dfmx1$nfallwp, dfmx1$KneeCategory, useNA="a")
-dfmx2 <- dfm[dfm$dnComorbidities %in% levels(dfm$dnComorbidities)[2], c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
+table(dfm[,c("NumberFallsWithProsthesis","dnComorbidities","KneeCategory")])
+cformula <- "NumberFallsWithProsthesis  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|AnonymousID)"
+cformulas <- "NumberFallsWithProsthesis  ~ -1 + offset(log(LengthOfStay)) + KneeCategory"
+dfmx1 <- dfm[dfm$dnComorbidities %in% levels(dfm$dnComorbidities)[1], c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
+table(dfmx1$NumberFallsWithProsthesis, dfmx1$KneeCategory, useNA="a")
+dfmx2 <- dfm[dfm$dnComorbidities %in% levels(dfm$dnComorbidities)[2], c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
 dfmx2 <- droplevels(dfmx2[!(dfmx2$KneeCategory %in% 0),])
-table(dfmx2$nfallwp, dfmx2$KneeCategory, useNA="a")
-dfmx3 <- dfm[dfm$dnComorbidities %in% levels(dfm$dnComorbidities)[3], c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
-table(dfmx3$nfallwp, dfmx3$KneeCategory, useNA="a")
+table(dfmx2$NumberFallsWithProsthesis, dfmx2$KneeCategory, useNA="a")
+dfmx3 <- dfm[dfm$dnComorbidities %in% levels(dfm$dnComorbidities)[3], c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
+table(dfmx3$NumberFallsWithProsthesis, dfmx3$KneeCategory, useNA="a")
 
 # m1 <- glmer(cformula, data=dfmx1, family = poisson(link = "log"), nAGQ = 20)
 m1 <- glm(cformulas, data=dfmx1, family = poisson(link = "log"))
@@ -450,16 +450,16 @@ dev.off()
 # propscore
 dfm$dpropscore <- cut2(dfm$propscore, g=3)
 table(dfm$dpropscore)
-table(dfm[,c("nfallwp","dpropscore","KneeCategory")])
-cformula <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|Anonymous)"
-cformulas <- "nfallwp  ~ -1 + offset(log(LengthOfStay)) + KneeCategory"
-dfmx1 <- dfm[dfm$dpropscore %in% levels(dfm$dpropscore)[1], c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
-table(dfmx1$nfallwp, dfmx1$KneeCategory, useNA="a")
-dfmx2 <- dfm[dfm$dpropscore %in% levels(dfm$dpropscore)[2], c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
-table(dfmx2$nfallwp, dfmx2$KneeCategory, useNA="a")
-dfmx3 <- dfm[dfm$dpropscore %in% levels(dfm$dpropscore)[3], c("LengthOfStay","nfallwp","KneeCategory","PatientID")]
+table(dfm[,c("NumberFallsWithProsthesis","dpropscore","KneeCategory")])
+cformula <- "NumberFallsWithProsthesis  ~ -1 + offset(log(LengthOfStay)) + KneeCategory + (1|Anonymous)"
+cformulas <- "NumberFallsWithProsthesis  ~ -1 + offset(log(LengthOfStay)) + KneeCategory"
+dfmx1 <- dfm[dfm$dpropscore %in% levels(dfm$dpropscore)[1], c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
+table(dfmx1$NumberFallsWithProsthesis, dfmx1$KneeCategory, useNA="a")
+dfmx2 <- dfm[dfm$dpropscore %in% levels(dfm$dpropscore)[2], c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
+table(dfmx2$NumberFallsWithProsthesis, dfmx2$KneeCategory, useNA="a")
+dfmx3 <- dfm[dfm$dpropscore %in% levels(dfm$dpropscore)[3], c("LengthOfStay","NumberFallsWithProsthesis","KneeCategory","AnonymousID")]
 dfmx3 <- droplevels(dfmx3[!(dfmx2$KneeCategory %in% 1),])
-table(dfmx3$nfallwp, dfmx3$KneeCategory, useNA="a")
+table(dfmx3$NumberFallsWithProsthesis, dfmx3$KneeCategory, useNA="a")
 
 m1 <- glmer(cformula, data=dfmx1, family = poisson(link = "log"), nAGQ = 20)
 # m1 <- glm(cformulas, data=dfmx1, family = poisson(link = "log"))

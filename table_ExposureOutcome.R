@@ -12,25 +12,17 @@
 
 # see IncidenceRates_trials.R
 
-table_ExposureOutcome <- function(dfm, modelszy){
+table_ExposureOutcome <- function(dfm, lIR){
 
 
-  require(lme4)
-  require(survey)
+  # require(lme4)
+  # require(survey)
   library("Hmisc")
   
   nmin = 5 # minimum number of falls to calculate falls rate in a group
 
   # pre-processing-------------------------
 
-  # unpackage parameters
-  lmodel_all <- modelszy[["lmodel_all"]]
-  lmodel0 <- modelszy[["lmodel0"]]
-  lmodel1 <- modelszy[["lmodel1"]]
-  ates0 <- modelszy[["ates0"]]
-  lanova <- modelszy[["lanova"]]
-  lRR <- modelszy[["lRR"]]
-          
   # treat NA on KneeCategory as a group
   ckc <- levels(dfm$KneeCategory)
   dfm$KneeCategory <- factor(dfm$KneeCategory, exclude = "")
@@ -49,9 +41,9 @@ table_ExposureOutcome <- function(dfm, modelszy){
     # number of hospital days for each knee category
     NumberHospitalDays= aggregate(LengthOfStay ~ KneeCategory, data=dfm, FUN=sum)[,"LengthOfStay"],
     # falls
-    NumberAnyFall = aggregate(NumberAnyFall ~ KneeCategory, data=dfm, FUN=sum)[,"NumberAnyFall"],
-    NumberFallsWithProsthesis = aggregate(NumberFallsWithProsthesis ~ KneeCategory, data=dfm, FUN=sum)[,"NumberFallsWithProsthesis"],
-    NumberFallsWithoutProsthesis = aggregate(NumberFallsWithoutProsthesis ~ KneeCategory, data=dfm, FUN=sum)[,"NumberFallsWithoutProsthesis"])
+    # NumberAnyFall = aggregate(NumberAnyFall ~ KneeCategory, data=dfm, FUN=sum)[,"NumberAnyFall"],
+    NumberFallsWithProsthesis = aggregate(NumberFallsWithProsthesis ~ KneeCategory, data=dfm, FUN=sum)[,"NumberFallsWithProsthesis"])
+    # NumberFallsWithoutProsthesis = aggregate(NumberFallsWithoutProsthesis ~ KneeCategory, data=dfm, FUN=sum)[,"NumberFallsWithoutProsthesis"])
 
   row.names(dfskc) <- dfskc$KneeCategory
 
@@ -60,26 +52,32 @@ table_ExposureOutcome <- function(dfm, modelszy){
 
 
     # include in table dfskc the model-estimated fall rates and their 95% CI
-  for (coutcome in names(lRR)){
-    dfskc <- merge(dfskc, lRR[[coutcome]], by="KneeCategory", all.x=T)
-    names(dfskc)[names(dfskc)=="irr"] <- paste0("IR_",coutcome)
-    dfskc[,paste0("IR_",coutcome,"_CI")] <- paste0(round(dfskc$irr_l, digits=2), "-", round(dfskc$irr_u, digits=2))
-    names(dfskc)[names(dfskc)=="irr_u"] <- paste0("IR_",coutcome,"_u")
-    names(dfskc)[names(dfskc)=="irr_l"] <- paste0("IR_",coutcome,"_l")
-  }
-
+  # unweighted  
+  dfskc <- merge(dfskc, lIR$irci_unw, by="KneeCategory", all.x=T)
+    dfskc[,"IR_NumberFallsWithProsthesis_CI"] <- paste0(round(dfskc$irr_l, digits=2), "-", round(dfskc$irr_u, digits=2))
+    names(dfskc)[names(dfskc)=="irr"] <- "IR_NumberFallsWithProsthesis"
+    dfskc <- dfskc[,setdiff(names(dfskc),c("irr_l","irr_u"))]
+    # weighted
+    dfskc <- merge(dfskc, lIR$irci_w, by="KneeCategory", all.x=T)
+    names(dfskc)[names(dfskc)=="irr"] <- "IR_NumberFallsWithProsthesis_PS"
+    dfskc[,"IR_NumberFallsWithProsthesis_PS_CI"] <- paste0(round(dfskc$irr_l, digits=2), "-", round(dfskc$irr_u, digits=2))
+    
   dfskc$KneeCategory <- as.character(dfskc$KneeCategory)
   dfskc[nrow(dfskc)+1, "KneeCategory"] <- "All"
-  for (coutcome in names(lmodel_all)){
-    RR_all_cout <- fdrr(gmem=lmodel_all[[coutcome]], namesx="All")
-    dfskc[dfskc$KneeCategory=="All", paste0("IR_", coutcome)] <- RR_all_cout$irr
-    dfskc[dfskc$KneeCategory=="All", paste0("IR_",coutcome,"_CI")] <- paste0(round(RR_all_cout$irr_l,digit=2), "-", round(RR_all_cout$irr_u,digit=2))
-  }
-
+  
+    dfskc[dfskc$KneeCategory=="All", "IR_NumberFallsWithProsthesis"] <- lIR$IR_all_unw$irr
+    dfskc[dfskc$KneeCategory=="All", "IR_NumberFallsWithProsthesis_CI"] <- paste0(round(lIR$IR_all_unw$irr_l,digit=2), "-", round(lIR$IR_all_unw$irr_u,digit=2))
+  
+    
   # sort
   row.names(dfskc) <- dfskc$KneeCategory
   dfskc <- dfskc[c("LK","AMK","FK","MPK","NA","All"),]
 
+  dfskc <- dfskc[,c("KneeCategory","NumberHospitalStays","NumberPatients",
+                                      "NumberHospitalDays","NumberFallsWithProsthesis",
+                                      "IR_NumberFallsWithProsthesis","IR_NumberFallsWithProsthesis_CI",
+                                      "IR_NumberFallsWithProsthesis_PS","IR_NumberFallsWithProsthesis_PS_CI")]
+  dfskc <- t(dfskc)
   
   return(dfskc)
 }

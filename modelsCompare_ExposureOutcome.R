@@ -31,6 +31,21 @@ lmodel <- list()
 vformula1 <- paste("NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory + (1|AnonymousID)")
 lmodel[["MEPoisson_lme4"]] <- glmer(vformula1, data=dfm, family = poisson(link = "log"), nAGQ = 20)
 
+lmodel[["MENegBin_lme4"]] <- glmer.nb(vformula1, data=dfm, nAGQ = 20,
+                                      control=glmerControl(trace=10,maxit=100))
+lmodel[["MENegBin_lme4"]] <- glmer.nb(vformula1, data=dfm, nAGQ = 20,
+                                      initCtrl=list(limit=100,theta=0.2))
+
+# summary(lmodel[["MENegBin_lme4"]])
+
+# Warning message:
+#   In theta.ml(Y, mu, weights = object@resp$weights, limit = limit,  :
+#                 iteration limit reached
+attr(lmodel[["MENegBin_lme4"]], "theta") # 0.9416
+getME(lmodel[["MENegBin_lme4"]], "glmer.nb.theta") # 4.4138
+
+
+
 # GLMMadaptive
 lmodel[["MEPoisson_GLMMadaptive"]] <-  mixed_model(fixed = NumberFallsWithProsthesis ~ offset(log(LengthOfStay)) + KneeCategory, 
                                                    random = ~ 1 | AnonymousID, 
