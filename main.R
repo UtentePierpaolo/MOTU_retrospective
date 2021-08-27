@@ -4,7 +4,7 @@
 # To fix:
 # 1. update data on Figshare/Github
 # 2. suppress verbose output
-# 3. addresses and working directrory
+# 3. addresses and working directory
 
 rm(list=ls())
 gc()
@@ -101,14 +101,17 @@ length(unique(dfr[whf,"AnonymousID"]))
 cvarx <- setdiff(varx, c("TimeFromAmputation_days","TimeFromAmputation_months","LengthOfStay"))
 
 # # "NumberAnyFall" (af)
-# dfRR_af <- f_univariate_associations_yRR(y="NumberAnyFall", xs=cvarx, dfm=dfr)
-# dfRR_af[which(dfRR_af$p<0.05),]
+dfRR_af <- f_univariate_associations_yRR(y="NumberAnyFall", xs=cvarx, dfm=dfr)
+dfRR_af[which(dfRR_af$p<0.05),]
 
 # "NumberFallsWithProsthesis" (wp)
 dfRR_wp <- f_univariate_associations_yRR(y="NumberFallsWithProsthesis", xs=cvarx, dfm=dfr)
 dfRR_wp[which(dfRR_wp$p<0.05),]
 
-
+# write dfRR_af, dfRR_wp
+notes <- "created with main.R on 11th June 2021"
+# save(list=c("notes","dfRR_af","dfRR_wp"),
+#      file="IRR.RData")
 
 # propensity score (PS)------------------------
 

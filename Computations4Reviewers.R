@@ -5,12 +5,13 @@
 
 rm(list=ls())
 
-setwd("C:/Users/Pierpaolo/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/retrospective study/Code/MOTU_retrospective") 
+setwd("C:/Users/p-pie/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/retrospective study/Code/MOTU_retrospective") 
 source("preprocessing.R")
 source("models_ExposureOutcome_NegBin.R")
 
 dfr <- read.csv("AnonymisedData_04112020.csv")
 dfr <- preprocessing(dfr)
+dfr <- dfr$dfr
 
 # traumatic ampuation
 # per hospital stay
@@ -56,3 +57,16 @@ cor(dfr$nComorbidities,dfr$MorseAdmissionTotalScore, use="p")
 cor(dfr$nDrugs, dfr$DrugAntipsychotics, use="p")
 cor(dfr$nDrugs, dfr$DrugAntidepressants, use="p")
 cor(dfr$nDrugs, dfr$DrugAntiepileptics, use="p")
+
+# time from amputation, firstDelivery/Renewal
+w1 <- dfr$FirstdeliveryRenewal %in% "FirstDeliv"
+w2 <- dfr$FirstdeliveryRenewal %in% "Renewal"
+layout(matrix(data=c(1,2),nrow=1))
+hist(dfr[w1,"TimeFromAmputation_months"],
+     50, xlab="Time from amputation (months)",
+     main="First prosthetic provision")
+hist(dfr[w2,"TimeFromAmputation_months"],50, 
+     xlab="Time from amputation (months)",
+     main="Prosthesis renewal")
+
+table(dfr$DrugAntidepressants, dfr$DrugAntiepileptics, useNA="a")
