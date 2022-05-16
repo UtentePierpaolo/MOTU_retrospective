@@ -9,15 +9,16 @@
 # iteration over varps hard coded
 
 
-plot_xzy <- function(llIRxzy, saveaddress){
+plot_xzy <- function(llIRxzy, saveaddress=NULL){
   
   require(Hmisc)
   
   vcol= c("dark green","dark orange","dark blue","darkorchid3","dark red")
   
-  
-  png(paste0(saveaddress, "Plot_xzy.png"),
-      width =21,height =12, units = 'in', res = 300)
+  if(!is.null(saveaddress)){
+    png(paste0(saveaddress, "Plot_xzy.png"),
+        width =21,height =12, units = 'in', res = 300)
+  }
   
   # layout(matrix(1:6, 2, 3, by.row = T))
   op <- par(mfrow = c(2,3), cex = 1)
@@ -93,7 +94,9 @@ plot_xzy <- function(llIRxzy, saveaddress){
   legend(x=0,y=20, legend=c("No use of antiepil.","Use of antiepil."),
          col=vcol[1:ixlev], lty=1, pch=16, lwd=2, cex=1.5)  
   
-  dev.off()
+  if(!is.null(saveaddress)){
+    dev.off()
+  }
 }
 
 

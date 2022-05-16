@@ -63,6 +63,9 @@ plot_ExposureOutcome <- function(linference, lIR, saveaddress=NULL){
   
   # pairwise significant differences
   # hard-coded
+  # # 2-0
+  # lines(c(0,0,2,2),c(4.9,5.1,5.1,4.9), lwd=1.5)
+  # text(x=0.75, y=5.25, label="*", cex=1.5)
   # 3-2
   lines(c(2,2,3,3),c(4.5,4.7,4.7,4.5), lwd=1.5)
   text(x=2.5, y=4.85, label="*", cex=1.5)

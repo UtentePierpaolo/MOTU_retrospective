@@ -30,7 +30,8 @@ source("plot_xzy.R")
 
 
 # load data
-# old version: https://figshare.com/s/c84ae0d82a3e053ab668
+# download data from 
+# https://figshare.com/articles/dataset/MOTU_data_The_Degree_of_Safety_Against_Falls_Provided_by_Four_Different_Prosthetic_Knee_Types_in_People_With_Transfemoral_Amputation_A_Retrospective_Observational_Study/12458225
 dfr <- read.csv("AnonymisedData_21032021.csv",
                 stringsAsFactors=T)
 
@@ -101,17 +102,13 @@ length(unique(dfr[whf,"AnonymousID"]))
 cvarx <- setdiff(varx, c("TimeFromAmputation_days","TimeFromAmputation_months","LengthOfStay"))
 
 # # "NumberAnyFall" (af)
-dfRR_af <- f_univariate_associations_yRR(y="NumberAnyFall", xs=cvarx, dfm=dfr)
-dfRR_af[which(dfRR_af$p<0.05),]
+# dfRR_af <- f_univariate_associations_yRR(y="NumberAnyFall", xs=cvarx, dfm=dfr)
+# dfRR_af[which(dfRR_af$p<0.05),]
 
 # "NumberFallsWithProsthesis" (wp)
 dfRR_wp <- f_univariate_associations_yRR(y="NumberFallsWithProsthesis", xs=cvarx, dfm=dfr)
 dfRR_wp[which(dfRR_wp$p<0.05),]
 
-# write dfRR_af, dfRR_wp
-notes <- "created with main.R on 11th June 2021"
-# save(list=c("notes","dfRR_af","dfRR_wp"),
-#      file="IRR.RData")
 
 # propensity score (PS)------------------------
 
@@ -125,7 +122,8 @@ varps <- dfRR_wp[which(dfRR_wp$p<0.05),"variable"]
 
 
 # lPS <- constructPropensityScore(dfm=dfr, varps=varps)
-lPS <- constructPropensityScore_gbm(dfr=dfr, varps=varps)
+# lPS <- constructPropensityScore_gbm(dfr=dfr, varps=varps)
+lPS <- constructPropensityScore_imp_gbm(dfr=dfr, varps=varps)
 
 dfr <- lPS$psdata
 
@@ -166,13 +164,16 @@ TableKneeFalls <- table_ExposureOutcome(dfm=dfr, lIR=lIR)
 
 # Figure 1. Falls incidence rates (IR) per knee category and incidence rate ratios (IRR) per knee category pairs
 plot_ExposureOutcome(linference=linference, lIR=lIR, 
-                     saveaddress="C:/Users/Pierpaolo/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/Publications/Manuscript_retrosp_1/Rev PTJ_2/Figures/")
+                     saveaddress="C:/Users/p-pie/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/Publications/Manuscript_retrosp_1/Rev PTJ_5/Figures/")
 
 
 
 # Figure 2. FallsWithProsthesis vs (KneeCategory x varps)
 llIRxzy <- IRxzy(dfm=dfr)
-plot_xzy(llIRxzy, saveaddress="C:/Users/p-pie/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/Publications/Manuscript_retrosp_1/Rev PTJ_2/Figures/")
+# plot_xzy(llIRxzy, saveaddress="C:/Users/p-pie/OneDrive - Alma Mater Studiorum Università di Bologna/MOTU/Publications/Manuscript_retrosp_1/Rev PTJ_5/Figures/")
 
 
+# save--------------
+
+notes <- "created with main.R on 31st August 2021"
 # save.image(file = "results.RData")
